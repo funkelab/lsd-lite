@@ -1,0 +1,47 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools", "wheel"]
+
+[project]
+name = "lsd-lite"
+description = "Simple LSD and affinity graph computation"
+authors = [
+    { name = "Arlo Sheridan", email = "arlo@e11.bio" },
+    { name = "Jan Funke", email = "funkej@janelia.hhmi.org" },
+    { name = "William Patton", email = "wllmpttn24@gmail.com" },
+]
+license = { text = "MIT" }
+readme = "README.md"
+dynamic = ["version"]
+
+classifiers = ["Programming Language :: Python :: 3"]
+keywords = []
+requires-python = ">=3.10"
+
+dependencies = [
+    "funlib.geometry>=0.3",
+    "scipy>=1.15.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "mypy>=1.0",
+    "ruff>=0.6",
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "lsd_lite.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["lsd_lite*"]
+
+[tool.ruff]
+lint.select = ["F", "W", "I001"]
+
+[[tool.mypy.overrides]]
+module = [
+    "scipy.*",
+]
+ignore_missing_imports = true
