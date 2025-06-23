@@ -9,7 +9,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-def get_local_shape_descriptors(
+def get_lsds(
     segmentation: np.ndarray,
     sigma: float | Sequence[float],
     voxel_size: Sequence[int] | None = None,
