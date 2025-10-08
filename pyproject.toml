@@ -27,7 +27,6 @@ dev = [
     "ruff>=0.6",
     "ty>=0.0.1a21",
 ]
-scratch = ["dacapo-toolbox>=1.0.0", "lsds", "matplotlib>=3.10.6"]
 
 [tool.setuptools.dynamic]
 version = { attr = "lsd_lite.__version__" }
@@ -38,6 +37,3 @@ lint.select = ["F", "W", "I001"]
 [[tool.mypy.overrides]]
 module = ["scipy.*"]
 ignore_missing_imports = true
-
-[tool.uv.sources]
-lsds = { git = "https://github.com/pattonw/lsd" }
