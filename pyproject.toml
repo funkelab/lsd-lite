@@ -16,19 +16,16 @@ dynamic = ["version"]
 
 classifiers = ["Programming Language :: Python :: 3"]
 keywords = []
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
-dependencies = [
-    "funlib.geometry>=0.3",
-    "scipy>=1.15.3",
-]
+dependencies = ["funlib.geometry>=0.3", "scipy>=1.15.3"]
 
 [project.optional-dependencies]
-dev = [
-    "pytest>=8.0",
-    "pytest-cov>=5.0",
-    "mypy>=1.0",
-    "ruff>=0.6",
+dev = ["pytest>=8.0", "pytest-cov>=5.0", "mypy>=1.0", "ruff>=0.6"]
+scratch = [
+    "dacapo-toolbox>=1.0.0",
+    "lsds",
+    "matplotlib>=3.10.6",
 ]
 
 [tool.setuptools.dynamic]
@@ -41,7 +38,8 @@ include = ["lsd_lite*"]
 lint.select = ["F", "W", "I001"]
 
 [[tool.mypy.overrides]]
-module = [
-    "scipy.*",
-]
+module = ["scipy.*"]
 ignore_missing_imports = true
+
+[tool.uv.sources]
+lsds = { git = "https://github.com/pattonw/lsd" }

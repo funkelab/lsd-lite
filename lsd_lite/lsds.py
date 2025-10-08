@@ -79,9 +79,9 @@ def get_lsds(
     df = downsample
     logger.debug("Downsampling segmentation %s with factor %f", segmentation.shape, df)
 
-    segmentation = segmentation[tuple(slice(None, None, df) for _ in range(dims))]
+    sub_segmentation = segmentation[tuple(slice(None, None, df) for _ in range(dims))]
 
-    sub_shape = segmentation.shape
+    sub_shape = sub_segmentation.shape
     sub_voxel_size = tuple(v * df for v in voxel_size)
     sub_sigma_voxel = tuple(s / v for s, v in zip(sigma, sub_voxel_size))
 
@@ -106,8 +106,8 @@ def get_lsds(
         if label == 0:
             continue
 
-        mask: np.ndarray = segmentation == label
-        masked_coords = coords * mask
+        sub_mask: np.ndarray = sub_segmentation == label
+        masked_coords = coords * sub_mask
 
         aggregate = functools.partial(
             gaussian_filter,
@@ -118,9 +118,10 @@ def get_lsds(
 
         # simply a mask convolved with a Gaussian
         mass = aggregate(
-            mask.astype(np.float32),
+            sub_mask.astype(np.float32),
             sigma=sub_sigma_voxel,
         )
+        mass[mass == 0] = 1
 
         # offsets (meshgrid convolved with Gaussian, divided by mass, minus
         # meshgrid)
@@ -140,7 +141,6 @@ def get_lsds(
         mean_offset = (
             mean_offset / max_distance.reshape((-1,) + (1,) * dims) * 0.5 + 0.5
         )
-        mean_offset *= mask
 
         # covariance
         coords_outer = outer_product(masked_coords)
@@ -161,22 +161,25 @@ def get_lsds(
         )
         covariance -= center_of_mass_outer[entries]
 
-        for ind, entry in enumerate(entries):
+        variance = covariance[:dims]  # diagonals
+        variance[variance < 1e-3] = 1e-3  # avoid division by zero
+        for d in range(dims):
+            variance[d] /= sigma[d] ** 2
+        pearson = covariance[dims:]  # off-diagonals
+        for ind, entry in enumerate(entries[dims:]):
             x, y = entry // dims, entry % dims
-            covariance[ind] /= sigma[x] * sigma[y]
+            covariance[ind] /= np.sqrt(variance[x] * variance[y])
 
-        descriptor = np.concatenate((mean_offset, covariance, mass[None, :]))
-
-        mask = mask[None][[0] * descriptor.shape[0], ...]
-        masked_descriptor = np.zeros_like(descriptor)
-        masked_descriptor[mask] = descriptor[mask]
-        label_descriptors.append(masked_descriptor)
+        descriptor = np.concatenate((mean_offset, variance, pearson * 0.5 + 0.5, mass[None, :]))
+        descriptor = upsample(descriptor, df)
+        label_descriptors.append(descriptor * (segmentation == label)[None, ...])
+        # label_descriptors.append(descriptor * sub_mask[None, ...])
 
     descriptors = np.sum(np.array(label_descriptors), axis=0)
     # clip outliers
     np.clip(descriptors, 0.0, 1.0, out=descriptors)
 
-    return upsample(descriptors, df)
+    return descriptors
 
 
 def outer_product(array):
