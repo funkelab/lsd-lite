@@ -15,6 +15,7 @@ def get_lsds(
     voxel_size: Sequence[int] | None = None,
     labels: Sequence[int] | None = None,
     downsample: int = 1,
+    use_paper_ordering: bool = True,
 ):
     """
     Compute local shape descriptors for the given segmentation.
@@ -121,7 +122,8 @@ def get_lsds(
             sub_mask.astype(np.float32),
             sigma=sub_sigma_voxel,
         )
-        mass[mass == 0] = 1
+        mass_mask = mass == 0
+        mass[mass_mask] = 1
 
         # offsets (meshgrid convolved with Gaussian, divided by mass, minus
         # meshgrid)
@@ -146,9 +148,15 @@ def get_lsds(
         coords_outer = outer_product(masked_coords)
         center_of_mass_outer = outer_product(center_of_mass)
 
-        diag_entries = [i * dims + i for i in range(dims)]
-        off_entries = [i * dims + j for i in range(dims) for j in range(i + 1, dims)]
-        entries = diag_entries + off_entries
+        # get indices of upper triangle of covariance matrix
+        rows, cols = np.triu_indices(dims)
+        entries = (rows * dims + cols).tolist()
+
+        # sort them s.t. the diagonal entries come first. the first `dims` are
+        # the diagonals
+        entries = sorted(
+            entries, key=lambda x: x % (dims + 1) * (dims + 1) + x // (dims + 1)
+        )
 
         covariance = (
             np.array([aggregate(coords_outer[d], sub_sigma_voxel) for d in entries])
@@ -156,37 +164,36 @@ def get_lsds(
         )
         covariance -= center_of_mass_outer[entries]
 
-        variance = covariance[:dims]
-        variance[...] = np.maximum(variance, 1e-3)  # floor for stability
+        # normalize variance and pearson correlations
+        variance = covariance[:dims]  # diagonals
+        variance = np.maximum(variance, 1e-3)  # avoid division by zero
 
-        # off-diagonals pearson
-        k = 0
-        for i in range(dims):
-            for j in range(i + 1, dims):
-                covariance[dims + k] /= np.sqrt(variance[i] * variance[j])
-                k += 1
+        # normalize pearson coefficients by axis variance
+        # also divide by 2 and add 0.5 to get them into [0, 1]
+        pearson = covariance[dims:]  # off-diagonals
+        for ind, entry in enumerate(entries[dims:]):
+            i, j = entry // dims, entry % dims
+            pearson[ind] /= 2 * np.sqrt(variance[i] * variance[j])
+            pearson[ind] += 0.5
 
-        # diagonals, normalize by sigma
-        for i in range(dims):
-            covariance[i] /= sigma[i] * sigma[i]
+        # normalize variance by axis sigma
+        for d in range(dims):
+            variance[d] /= sigma[d] ** 2
 
-        descriptor = np.concatenate((mean_offset, covariance, mass[None, :]))
+        # reset 0 mass regions (this was set to 1 above to avoid nans)
+        mass = (mass * ~mass_mask)
+
+        if dims == 3 and use_paper_ordering:
+            # rearrange for backwards compatibility
+            pearson = pearson[[0, 2, 1]]
+
+        descriptor = np.concatenate(
+            (mean_offset, variance, pearson, mass[None, :])
+        )
         descriptor = upsample(descriptor, df)
         label_descriptors.append(descriptor * (segmentation == label)[None, ...])
 
     descriptors = np.sum(np.array(label_descriptors), axis=0)
-
-    n_mean = dims
-    n_variance = dims
-    n_pearsons = dims * (dims - 1) // 2
-
-    pearsons_slice = slice(n_mean + n_variance, n_mean + n_variance + n_pearsons)
-
-    # rescale pearsons
-    if n_pearsons:
-        descriptors[pearsons_slice] = descriptors[pearsons_slice] * 0.5 + 0.5
-
-    # clip outliers
     np.clip(descriptors, 0.0, 1.0, out=descriptors)
 
     return descriptors
