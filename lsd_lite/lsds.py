@@ -146,36 +146,46 @@ def get_lsds(
         coords_outer = outer_product(masked_coords)
         center_of_mass_outer = outer_product(center_of_mass)
 
-        # get indices of upper triangle of covariance matrix
-        rows, cols = np.triu_indices(dims)
-        entries = (rows * dims + cols).tolist()
+        diag_entries = [i * dims + i for i in range(dims)]
+        off_entries = [i * dims + j for i in range(dims) for j in range(i + 1, dims)]
+        entries = diag_entries + off_entries
 
-        # sort them s.t. the diagonal entries come first. the first `dims` are
-        # the diagonals
-        entries = sorted(
-            entries, key=lambda x: x % (dims + 1) * (dims + 1) + x // (dims + 1)
-        )
         covariance = (
             np.array([aggregate(coords_outer[d], sub_sigma_voxel) for d in entries])
             / mass
         )
         covariance -= center_of_mass_outer[entries]
 
-        variance = covariance[:dims]  # diagonals
-        variance[variance < 1e-3] = 1e-3  # avoid division by zero
-        for d in range(dims):
-            variance[d] /= sigma[d] ** 2
-        pearson = covariance[dims:]  # off-diagonals
-        for ind, entry in enumerate(entries[dims:]):
-            x, y = entry // dims, entry % dims
-            covariance[ind] /= np.sqrt(variance[x] * variance[y])
+        variance = covariance[:dims]
+        variance[...] = np.maximum(variance, 1e-3)  # floor for stability
 
-        descriptor = np.concatenate((mean_offset, variance, pearson * 0.5 + 0.5, mass[None, :]))
+        # off-diagonals pearson
+        k = 0
+        for i in range(dims):
+            for j in range(i + 1, dims):
+                covariance[dims + k] /= np.sqrt(variance[i] * variance[j])
+                k += 1
+
+        # diagonals, normalize by sigma
+        for i in range(dims):
+            covariance[i] /= sigma[i] * sigma[i]
+
+        descriptor = np.concatenate((mean_offset, covariance, mass[None, :]))
         descriptor = upsample(descriptor, df)
         label_descriptors.append(descriptor * (segmentation == label)[None, ...])
-        # label_descriptors.append(descriptor * sub_mask[None, ...])
 
     descriptors = np.sum(np.array(label_descriptors), axis=0)
+
+    n_mean = dims
+    n_variance = dims
+    n_pearsons = dims * (dims - 1) // 2
+
+    pearsons_slice = slice(n_mean + n_variance, n_mean + n_variance + n_pearsons)
+
+    # rescale pearsons
+    if n_pearsons:
+        descriptors[pearsons_slice] = descriptors[pearsons_slice] * 0.5 + 0.5
+
     # clip outliers
     np.clip(descriptors, 0.0, 1.0, out=descriptors)
 
