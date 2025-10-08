@@ -185,6 +185,8 @@ def get_lsds(
     # rescale pearsons
     if n_pearsons:
         descriptors[pearsons_slice] = descriptors[pearsons_slice] * 0.5 + 0.5
+        # reset background
+        descriptors[pearsons_slice] *= segmentation[(slice(None),)] != 0
 
     # clip outliers
     np.clip(descriptors, 0.0, 1.0, out=descriptors)
