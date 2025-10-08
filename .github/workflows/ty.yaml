@@ -1,0 +1,17 @@
+name: ty
+
+on: [push, pull_request]
+
+jobs:
+  static-analysis:
+    name: ty
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup checkout
+        uses: actions/checkout@v2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: ty
+        run: uv run --extra dev ty check

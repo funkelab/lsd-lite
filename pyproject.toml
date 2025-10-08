@@ -21,18 +21,16 @@ requires-python = ">=3.11"
 dependencies = ["funlib.geometry>=0.3", "scipy>=1.15.3"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "pytest-cov>=5.0", "mypy>=1.0", "ruff>=0.6"]
-scratch = [
-    "dacapo-toolbox>=1.0.0",
-    "lsds",
-    "matplotlib>=3.10.6",
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "ty>=0.0.1a21",
 ]
+scratch = ["dacapo-toolbox>=1.0.0", "lsds", "matplotlib>=3.10.6"]
 
 [tool.setuptools.dynamic]
 version = { attr = "lsd_lite.__version__" }
-
-[tool.setuptools.packages.find]
-include = ["lsd_lite*"]
 
 [tool.ruff]
 lint.select = ["F", "W", "I001"]

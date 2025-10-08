@@ -1,6 +1,7 @@
-from lsd_lite import get_affs
 import numpy as np
 import pytest
+
+from lsd_lite import get_affs
 
 NEIGHBORHOODS = {
     "1d": [[1], [0]],

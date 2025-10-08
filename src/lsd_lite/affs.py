@@ -1,6 +1,7 @@
-from numpy.typing import ArrayLike, NDArray
 from typing import Callable, Sequence
+
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
 
 
 def eq(x: NDArray, y: NDArray) -> NDArray:

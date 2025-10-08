@@ -1,10 +1,11 @@
+import functools
+import logging
 from collections.abc import Sequence
+
+import numpy as np
 from funlib.geometry import Coordinate
 from numpy.lib.stride_tricks import as_strided
 from scipy.ndimage import convolve, gaussian_filter
-import functools
-import logging
-import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -181,15 +182,13 @@ def get_lsds(
             variance[d] /= sigma[d] ** 2
 
         # reset 0 mass regions (this was set to 1 above to avoid nans)
-        mass = (mass * ~mass_mask)
+        mass = mass * ~mass_mask
 
         if dims == 3 and use_paper_ordering:
             # rearrange for backwards compatibility
             pearson = pearson[[0, 2, 1]]
 
-        descriptor = np.concatenate(
-            (mean_offset, variance, pearson, mass[None, :])
-        )
+        descriptor = np.concatenate((mean_offset, variance, pearson, mass[None, :]))
         descriptor = upsample(descriptor, df)
         label_descriptors.append(descriptor * (segmentation == label)[None, ...])
 
