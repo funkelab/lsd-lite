@@ -34,12 +34,3 @@ version = { attr = "lsd_lite.__version__" }
 [tool.ruff]
 lint.select = ["F", "W", "I001"]
 
-[[tool.mypy.overrides]]
-module = ["scipy.*"]
-ignore_missing_imports = true
-
-[tool.ty.src]
-include = ["."]
-exclude = [
-  "**/*.ipynb",
-]

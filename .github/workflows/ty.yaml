@@ -14,4 +14,4 @@ jobs:
         uses: astral-sh/setup-uv@v6
 
       - name: ty
-        run: uv run --extra dev ty check
+        run: uv run --all-extras ty check
