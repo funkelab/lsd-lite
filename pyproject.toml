@@ -35,5 +35,11 @@ version = { attr = "lsd_lite.__version__" }
 lint.select = ["F", "W", "I001"]
 
 [[tool.mypy.overrides]]
-module = ["scipy.*", "skimage.*", "matplotlib.*"]
+module = ["scipy.*"]
 ignore_missing_imports = true
+
+[tool.ty.src]
+include = ["."]
+exclude = [
+  "**/*.ipynb",
+]
