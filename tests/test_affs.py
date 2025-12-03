@@ -28,7 +28,6 @@ EXPECTED_TOY_COUNTS = {
     "3d_long_range": [16, 56, 56, 32, 32, 32, 32, 32, 32],
 }
 
-
 @pytest.mark.parametrize("nb_key", NEIGHBORHOODS.keys())
 @pytest.mark.parametrize("dist_func", ["equality", "equality-no-bg"])
 def test_real_shapes(real_labels, nb_key, dist_func):
@@ -61,3 +60,20 @@ def test_no_background_dist_func(toy_labels, nb_key):
 def test_real_affs_non_empty(real_labels, nb_key, dist_func):
     affs = get_affs(real_labels, NEIGHBORHOODS[nb_key], dist=dist_func, pad=True)
     assert affs.any(), f"{nb_key} – {dist_func} produced all-zero affinities"
+
+
+@pytest.mark.parametrize("nb_key", NEIGHBORHOODS.keys())
+def test_empty_labels(empty_labels, nb_key):
+    """Test that get_affs handles empty (all-background) segmentations."""
+    neigh = NEIGHBORHOODS[nb_key]
+
+    # With equality-no-bg, background should not produce affinities
+    affs = get_affs(empty_labels, neigh, dist="equality-no-bg", pad=True)
+    assert affs.shape == (len(neigh), *empty_labels.shape)
+    assert not affs.any()
+
+    # With equality, background matches itself, so all True
+    affs_eq = get_affs(empty_labels, neigh, dist="equality", pad=True)
+    assert affs_eq.shape == (len(neigh), *empty_labels.shape)
+    assert affs_eq.all()
+

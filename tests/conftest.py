@@ -17,6 +17,11 @@ def toy_labels() -> np.ndarray:
     labels[-1] = 2
     return labels
 
+@pytest.fixture(scope="session")
+def empty_labels() -> np.ndarray:
+    """All-background (zeros) 3D volume."""
+    labels = np.zeros((10, 10, 10), dtype=np.uint64)
+    return labels
 
 @pytest.fixture(scope="session")
 def real_labels() -> np.ndarray:

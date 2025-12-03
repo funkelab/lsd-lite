@@ -1,3 +1,5 @@
+import numpy as np
+
 from lsd_lite import get_lsds
 
 
@@ -12,3 +14,13 @@ def test_lsds(real_labels):
 def test_sigmas(real_labels):
     for sigma in [5, 10, 15, 20]:
         _ = get_lsds(real_labels[0], sigma=sigma, downsample=2)
+
+
+def test_empty_labels(empty_labels):
+    """Test that get_lsds handles empty (all-background) segmentations."""
+    lsds = get_lsds(empty_labels, sigma=5, downsample=1)
+
+    # Should return zeros with correct shape
+    assert lsds.shape == (10,) + empty_labels.shape
+    assert np.all(lsds == 0)
+
