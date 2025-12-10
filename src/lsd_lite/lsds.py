@@ -192,8 +192,13 @@ def get_lsds(
         descriptor = upsample(descriptor, df)
         label_descriptors.append(descriptor * (segmentation == label)[None, ...])
 
-    descriptors = np.sum(np.array(label_descriptors), axis=0)
-    np.clip(descriptors, 0.0, 1.0, out=descriptors)
+    if len(label_descriptors) == 0:
+        # No valid labels found, return zeros with expected shape
+        channels = 10 if dims == 3 else 6
+        descriptors = np.zeros((channels,) + segmentation.shape, dtype=np.float32)
+    else:
+        descriptors = np.sum(np.array(label_descriptors), axis=0)
+        np.clip(descriptors, 0.0, 1.0, out=descriptors)
 
     return descriptors
 
