@@ -73,10 +73,6 @@ def get_lsds(
     if labels is None:
         labels = np.unique(segmentation)
 
-    # prepare full-res descriptor volumes for roi
-    # channels = 10 if dims == 3 else 6
-    # descriptors = np.zeros((channels,) + segmentation.shape, dtype=np.float32)
-
     # get sub-sampled shape, roi, voxel size and sigma
     df = downsample
     logger.debug("Downsampling segmentation %s with factor %f", segmentation.shape, df)
@@ -102,8 +98,10 @@ def get_lsds(
     # weighting, sigma itself is probably a better upper bound
     max_distance = np.array([s for s in sigma], dtype=np.float32)
 
-    # for all labels
-    label_descriptors = []
+    # prepare full-res descriptor volumes for roi
+    channels = 10 if dims == 3 else 6
+    descriptors = np.zeros((channels,) + segmentation.shape, dtype=np.float32)
+
     for label in labels:
         if label == 0:
             continue
@@ -190,15 +188,9 @@ def get_lsds(
 
         descriptor = np.concatenate((mean_offset, variance, pearson, mass[None, :]))
         descriptor = upsample(descriptor, df)
-        label_descriptors.append(descriptor * (segmentation == label)[None, ...])
+        descriptors += descriptor * (segmentation == label)[None, ...]
 
-    if len(label_descriptors) == 0:
-        # No valid labels found, return zeros with expected shape
-        channels = 10 if dims == 3 else 6
-        descriptors = np.zeros((channels,) + segmentation.shape, dtype=np.float32)
-    else:
-        descriptors = np.sum(np.array(label_descriptors), axis=0)
-        np.clip(descriptors, 0.0, 1.0, out=descriptors)
+    np.clip(descriptors, 0.0, 1.0, out=descriptors)
 
     return descriptors
 
