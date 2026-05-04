@@ -22,7 +22,7 @@ DIST_FUNCS: dict[str, Callable[[NDArray, NDArray], NDArray]] = {
 
 def _compute_affs_single(
     arr: NDArray,
-    offset: Sequence[int],
+    offset: Sequence[int] | np.ndarray,
     dist_fn,
     pad: bool,
 ) -> NDArray:

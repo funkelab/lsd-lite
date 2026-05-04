@@ -14,7 +14,7 @@ def get_lsds(
     segmentation: np.ndarray,
     sigma: float | Sequence[float],
     voxel_size: Sequence[int] | None = None,
-    labels: Sequence[int] | None = None,
+    labels: np.ndarray | Sequence[int] | None = None,
     downsample: int = 1,
     use_paper_ordering: bool = True,
 ):
