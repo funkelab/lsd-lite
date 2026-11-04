@@ -102,19 +102,31 @@ def get_lsds(
     channels = 10 if dims == 3 else 6
     descriptors = np.zeros((channels,) + segmentation.shape, dtype=np.float32)
 
+    aggregate = functools.partial(
+        gaussian_filter,
+        mode="constant",
+        cval=0.0,
+        truncate=3.0,
+    )
+
     for label in labels:
         if label == 0:
             continue
 
-        sub_mask: np.ndarray = sub_segmentation == label
-        masked_coords = coords * sub_mask
+        # Restrict the calculation to the label's bounding box, not the full volume.
+        # This is exact: the descriptor is only written inside the label, and the
+        # zero-padded Gaussians there see nothing but the label's own mask. The box
+        # is rounded out to whole coarse voxels so it covers the label after upsampling.
+        full_mask = segmentation == label
+        bbox = _bounding_box(full_mask)
+        if bbox is None:
+            continue  # label not present in this block
+        sub_box = tuple(slice(s.start // df, (s.stop - 1) // df + 1) for s in bbox)
+        full_box = tuple(slice(s.start * df, s.stop * df) for s in sub_box)
 
-        aggregate = functools.partial(
-            gaussian_filter,
-            mode="constant",
-            cval=0.0,
-            truncate=3.0,
-        )
+        sub_mask: np.ndarray = sub_segmentation[sub_box] == label
+        box_coords = coords[(slice(None),) + sub_box]
+        masked_coords = box_coords * sub_mask
 
         # simply a mask convolved with a Gaussian
         mass = aggregate(
@@ -138,7 +150,7 @@ def get_lsds(
             )
             / mass
         )
-        mean_offset = center_of_mass - coords
+        mean_offset = center_of_mass - box_coords
         mean_offset = (
             mean_offset / max_distance.reshape((-1,) + (1,) * dims) * 0.5 + 0.5
         )
@@ -188,11 +200,24 @@ def get_lsds(
 
         descriptor = np.concatenate((mean_offset, variance, pearson, mass[None, :]))
         descriptor = upsample(descriptor, df)
-        descriptors += descriptor * (segmentation == label)[None, ...]
+        descriptors[(slice(None),) + full_box] += descriptor * full_mask[full_box][None, ...]
 
     np.clip(descriptors, 0.0, 1.0, out=descriptors)
 
     return descriptors
+
+
+def _bounding_box(mask: np.ndarray) -> tuple[slice, ...] | None:
+    """Tight slices around the ``True`` voxels of ``mask``; ``None`` if there are none."""
+
+    slices = []
+    for axis in range(mask.ndim):
+        other_axes = tuple(a for a in range(mask.ndim) if a != axis)
+        hit = np.flatnonzero(np.any(mask, axis=other_axes))
+        if hit.size == 0:
+            return None
+        slices.append(slice(int(hit[0]), int(hit[-1]) + 1))
+    return tuple(slices)
 
 
 def outer_product(array):
